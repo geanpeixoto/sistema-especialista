@@ -10,11 +10,11 @@ import alice.tuprolog.NoMoreSolutionException;
 import alice.tuprolog.NoSolutionException;
 import alice.tuprolog.Prolog;
 import alice.tuprolog.SolveInfo;
-import alice.tuprolog.Term;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -104,6 +104,7 @@ public class Console {
 
     Set<String> getServicos() throws MalformedGoalException, NoSolutionException {
         Set<String> result = new HashSet<>();
+        result.add("geral");
 
         SolveInfo info = engine.solve("servico(Key, Value).");
         do {
@@ -144,5 +145,25 @@ public class Console {
         } while (true);
 
         return result;
+    }
+
+    Integer getValorMaximo() {
+        do {
+            System.out.println("\nQual o valor máximo disposto a pagar?");
+            System.out.print("R: ");
+
+            try {
+                Integer integer = Integer.parseInt(reader.readLine());
+                return integer;
+            } catch (IOException | NumberFormatException ex) {
+            }
+
+        } while (true);
+    }
+
+    void showAnswer(List<Plano> planos ) {
+        System.out.println("\nPlanos encontrados: \n");
+        for ( Plano plano : planos )
+            System.out.println(plano);
     }
 }

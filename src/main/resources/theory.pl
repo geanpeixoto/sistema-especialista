@@ -16,6 +16,7 @@ servico(chat, 'Mensageiros (Whatsapp, Hangouts, Telegram)').
 servico(torrent, 'Torrent').
 servico(noticias, 'Portais de notícias (G1, Terra, R7)').
 
+servico_upload(geral, 1).
 servico_upload(jogosonline, 1).
 servico_upload(streamingvideo, 1).
 servico_upload(streamingaudio, 1).
@@ -25,6 +26,7 @@ servico_upload(chat, 1).
 servico_upload(torrent, 3).
 servico_upload(noticias, 1).
 
+servico_download(geral, 2).
 servico_download(jogosonline, 1).
 servico_download(streamingvideo, 3).
 servico_download(streamingaudio, 2).
@@ -129,7 +131,7 @@ plano(Operadora, Conexao, Nome, Valor, Franquia, FUnidade, Download, DUnidade, U
 plano(Operadora, Conexao, Nome, Valor, Franquia, FUnidade, Download, DUnidade, Upload, UUnidade) :-
   plano_velocidade(Operadora, Conexao, Nome, Valor, Download, DUnidade, Upload, UUnidade),
   FUnidade = gb,
-  Franquia is 2048.
+  Franquia is 300.
 
 /**
  * Converte todas as unidades para kb
@@ -146,3 +148,84 @@ plano_(Operadora, Conexao, Nome, Valor, Franquia_, Download_, Upload_) :-
   parse(Franquia, FUnidade, Franquia_),
   parse(Download, DUnidade, Download_),
   parse(Upload, UUnidade, Upload_).
+
+%% query(TipoConexao, NumeroUsuarios, TempoEstimado, Servicos, ValorMaximo) :-
+
+soma_download([], 0).
+soma_download([Head|Tail], Soma) :-
+    soma_download(Tail, Soma_),
+    servico_download(Head, Value),
+    Soma is Soma_ + Value.
+
+soma_upload([], 0).
+soma_upload([Head|Tail], Soma) :-
+    soma_upload(Tail, Soma_),
+    servico_upload(Head, Value),
+    Soma is Soma_ + Value.
+
+/**
+ * Valor normalizado do uso da taxa de download.
+ * 71.5 é o valor máximo possível
+ */
+download_norm(Servicos, NumeroPessoas, Value) :-
+    soma_download(Servicos, Sum),
+    Value is (Sum*(1+((NumeroPessoas-1)*0.5)))/110.
+
+/**
+ * Valor normalizado do uso da taxa de upload.
+ * 72 é o valor máximo possível
+ */
+upload_norm(Servicos, NumeroPessoas, Value) :-
+    soma_upload(Servicos, Sum),
+    Value is (Sum*(1+((NumeroPessoas-1)*0.5)))/72.
+
+/**
+ * Valor normalizado do uso da franquia.
+ * 451 é o valor máximo possível
+ */
+fraquia_norm(Servicos, NumeroPessoas, QuantidadeHoras, Value) :-
+    soma_download(Servicos, Sum),
+    Value is (Sum*(1+((NumeroPessoas-1)*0.4)))*sqrt(QuantidadeHoras)/451.
+
+plano_download_norm(Operadora, Nome, Preco, Value) :-
+    plano_(Operadora, _, Nome, Preco, _, Download_, _),
+    Value is sqrt(Download_-500)/sqrt(153600-500).
+
+plano_upload_norm(Operadora, Nome, Preco, Value) :-
+    plano_(Operadora, _, Nome, Preco, _, _, Upload_),
+    Value is sqrt(Upload_-100)/sqrt(50*1024-100).
+
+plano_franquia_norm(Operadora, Nome, Preco, Value) :-
+    plano_(Operadora, _, Nome, Preco, Franquia_, _, _),
+    Value is sqrt(Franquia_-300*1024)/sqrt(300*1024*1024-300*1024).
+
+modulo(Value, Value) :- Value >= 0, !.
+modulo(Value, Inv) :- Inv is -Value.
+
+error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco, Value) :-
+    plano_download_norm(Operadora, Plano, Preco, OD),
+    plano_upload_norm(Operadora, Plano, Preco, OU),
+    plano_franquia_norm(Operadora, Plano, Preco, OF),
+    download_norm(Servicos, NumeroPessoas, UD),
+    upload_norm(Servicos, NumeroPessoas, UU),
+    fraquia_norm(Servicos, NumeroPessoas, QuantidadeHoras, UF),
+    modulo(OD-UD, D),
+    modulo(OU-UU, U),
+    modulo(OF-UF, F),
+    Value is D*0.4 + U*0.2 + F*0.4.
+
+queue_contains([Head|_], Head) :- !.
+queue_contains([_|Tail], Head) :- queue_contains(Tail, Head).
+
+ping_check(Servicos, _) :- not(queue_contains(Servicos, jogosonline)).
+ping_check(_, Conexao) :- Conexao \== g3.
+
+conexao_check(Conexao, TipoConexao) :- conexao(Conexao, TipoConexao).
+
+run(Servicos, NumeroPessoas, QuantidadeHoras, PrecoMaximo, TipoConexao, Operadora, Plano, Preco) :-
+    plano_(Operadora, Conexao, Plano, Preco, _, _, _),
+    error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco, Error),
+    ping_check(Servicos, Conexao),
+    conexao_check(Conexao, TipoConexao),
+    Error < 0.1,
+    Preco < PrecoMaximo.

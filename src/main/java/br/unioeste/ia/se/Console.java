@@ -77,15 +77,16 @@ public class Console {
 
             try {
                 Integer integer = Integer.parseInt(reader.readLine());
-                
-                if ( integer > 0 && integer <= 10 )
+
+                if (integer > 0 && integer <= 10) {
                     return integer;
+                }
             } catch (IOException | NumberFormatException ex) {
             }
 
         } while (true);
     }
-    
+
     Integer getTempoEstimado() {
         do {
             System.out.println("\nEm média, quantas horas a conexão será utilizada por dia? [1-24]");
@@ -93,9 +94,10 @@ public class Console {
 
             try {
                 Integer integer = Integer.parseInt(reader.readLine());
-                
-                if ( integer > 0 && integer <= 24 )
+
+                if (integer > 0 && integer <= 24) {
                     return integer;
+                }
             } catch (IOException | NumberFormatException ex) {
             }
 
@@ -111,12 +113,13 @@ public class Console {
 
             String key = info.getVarValue("Key").toString();
             String value = info.getVarValue("Value").toString().replaceAll("\'", "");
-            
-            loop:do {
+
+            loop:
+            do {
                 System.out.printf("\nSerá utilizado %s? {sim, nao}\nR: ", value);
-                
+
                 try {
-                    switch(reader.readLine()) {
+                    switch (reader.readLine()) {
                         case "sim":
                         case "yes":
                         case "s":
@@ -132,10 +135,8 @@ public class Console {
                 } catch (IOException ex) {
                     Logger.getLogger(Console.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                
-            } while(true);
-            
-            
+
+            } while (true);
 
             try {
                 info = engine.solveNext();
@@ -161,9 +162,17 @@ public class Console {
         } while (true);
     }
 
-    void showAnswer(List<Plano> planos ) {
-        System.out.println("\nPlanos encontrados: \n");
-        for ( Plano plano : planos )
+    void showAnswer(List<Plano> planos) {
+        System.out.println("\n\n\nPlanos encontrados: \n");
+        for (Plano plano : planos) {
             System.out.println(plano);
+        }
+    }
+
+    void showMessages(List<String> messages) {
+        System.out.println("\nOs planos foram filtrados com base no seguinte perfil: \n");
+        for (String message : messages) {
+            System.out.printf("\n*%s", message);
+        }
     }
 }

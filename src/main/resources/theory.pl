@@ -165,44 +165,51 @@ soma_upload([Head|Tail], Soma) :-
 
 /**
  * Valor normalizado do uso da taxa de download.
- * 71.5 é o valor máximo possível
+ * 56 é o valor máximo possível
  */
 download_norm(Servicos, NumeroPessoas, Value) :-
     soma_download(Servicos, Sum),
-    Value is (Sum*(1+((NumeroPessoas-1)*0.5)))/110.
+    Value is (Sum*(1+((NumeroPessoas-1)*0.2)))/56.
 
 /**
  * Valor normalizado do uso da taxa de upload.
- * 72 é o valor máximo possível
+ * 37 é o valor máximo possível
  */
 upload_norm(Servicos, NumeroPessoas, Value) :-
     soma_upload(Servicos, Sum),
-    Value is (Sum*(1+((NumeroPessoas-1)*0.5)))/72.
+    Value is (Sum*(1+((NumeroPessoas-1)*0.2)))/37.
 
 /**
  * Valor normalizado do uso da franquia.
- * 451 é o valor máximo possível
+ * 104 é o valor máximo possível
  */
+
+greater(V1, V2, V1) :- V1 > V2, !.
+greater(V1, V2, V2).
+
 fraquia_norm(Servicos, NumeroPessoas, QuantidadeHoras, Value) :-
     soma_download(Servicos, Sum),
-    Value is (Sum*(1+((NumeroPessoas-1)*0.4)))*sqrt(QuantidadeHoras)/451.
+    Value is ((Sum*(1+((NumeroPessoas-1)*0.15)))*sqrt(sqrt(QuantidadeHoras)))/104.
 
 plano_download_norm(Operadora, Nome, Preco, Value) :-
     plano_(Operadora, _, Nome, Preco, _, Download_, _),
-    Value is sqrt(Download_-500)/sqrt(153600-500).
+    V is sqrt(Download_-500)/sqrt(153600-500),
+    greater(V, 1, Value).
 
 plano_upload_norm(Operadora, Nome, Preco, Value) :-
     plano_(Operadora, _, Nome, Preco, _, _, Upload_),
-    Value is sqrt(Upload_-100)/sqrt(50*1024-100).
+    V is sqrt(Upload_-100)/sqrt(5*1024-100),
+    greater(V, 1, Value).
 
 plano_franquia_norm(Operadora, Nome, Preco, Value) :-
     plano_(Operadora, _, Nome, Preco, Franquia_, _, _),
-    Value is sqrt(Franquia_-300*1024)/sqrt(300*1024*1024-300*1024).
+    V is sqrt(Franquia_-300*1024)/sqrt(300*1024*1024-300*1024),
+    greater(V, 1, Value).
 
 modulo(Value, Value) :- Value >= 0, !.
 modulo(Value, Inv) :- Inv is -Value.
 
-error_check(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco) :-
+error_check(Servicos, NumeroPessoas, QuantidadeHoras, TipoConexao, Operadora, Plano, Preco) :-
     plano_download_norm(Operadora, Plano, Preco, OD),
     plano_upload_norm(Operadora, Plano, Preco, OU),
     plano_franquia_norm(Operadora, Plano, Preco, OF),
@@ -212,9 +219,9 @@ error_check(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco) :
     modulo(OD-UD, D),
     modulo(OU-UU, U),
     modulo(OF-UF, F),
-    D < 0.1,
-    U < 0.1,
-    F < 0.1.
+    D < 0.3,
+    U < 0.3,
+    (TipoConexao \== movel; F < 0.3).
 
 queue_contains([Head|_], Head) :- !.
 queue_contains([_|Tail], Head) :- queue_contains(Tail, Head).
@@ -225,8 +232,51 @@ ping_check(_, Conexao) :- Conexao \== g3.
 conexao_check(Conexao, TipoConexao) :- conexao(Conexao, TipoConexao).
 
 run(Servicos, NumeroPessoas, QuantidadeHoras, PrecoMaximo, TipoConexao, Operadora, Plano, Preco) :-
-    plano_(Operadora, Conexao, Plano, Preco, _, _, _),
-    error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco),
-    ping_check(Servicos, Conexao),
-    conexao_check(Conexao, TipoConexao),
-    Preco < PrecoMaximo.
+  plano_(Operadora, Conexao, Plano, Preco, _, _, _),
+  error_check(Servicos, NumeroPessoas, QuantidadeHoras, TipoConexao, Operadora, Plano, Preco),
+  ping_check(Servicos, Conexao),
+  conexao_check(Conexao, TipoConexao),
+  Preco < PrecoMaximo.
+
+message(Servicos, _, _, _, _, Message) :-
+  queue_contains(Servicos, jogosonline),
+  Message = 'Conexões 3G foram descartadas pois influênciam negativamente no ping'.
+
+message(Servicos, _, _, _, TipoConexao, Message) :-
+  TipoConexao == domestica,
+  Message = 'Planos domésticos não limitam a franquia'.
+
+message(Servicos, NumeroPessoas, _, _, _, Message) :-
+  download_norm(Servicos, NumeroPessoas, Value),
+  Value > 0.3,
+  Value < 0.6,
+  Message = 'Taxa de download mediana'.
+
+message(Servicos, NumeroPessoas, _, _, _, Message) :-
+  download_norm(Servicos, NumeroPessoas, Value),
+  Value < 0.3,
+  Message = 'Taxa de download baixa'.
+
+message(Servicos, NumeroPessoas, _, _, _, Message) :-
+  download_norm(Servicos, NumeroPessoas, Value),
+  Value > 0.6,
+  Message = 'Taxa de download alta'.
+
+message(Servicos, NumeroPessoas, QuantidadeHoras, _, TipoConexao, Message) :-
+  TipoConexao == movel,
+  fraquia_norm(Servicos, NumeroPessoas, QuantidadeHoras, Value),
+  Value > 0.3,
+  Value < 0.6,
+  Message = 'Plano como franquia mediana'.
+
+message(Servicos, NumeroPessoas, QuantidadeHoras, _, TipoConexao, Message) :-
+  TipoConexao = movel,
+  fraquia_norm(Servicos, NumeroPessoas, QuantidadeHoras, Value),
+  Value < 0.3,
+  Message = 'Plano com franquia básica é o suficiente'.
+
+message(Servicos, NumeroPessoas, QuantidadeHoras, _, TipoConexao, Message) :-
+  TipoConexao = movel,
+  fraquia_norm(Servicos, NumeroPessoas, QuantidadeHoras, Value),
+  Value > 0.7,
+  Message = 'Plano com franquia alta é necessária'.

@@ -35,7 +35,9 @@ public class Main {
         Set<String> servicos = console.getServicos();
         Integer valorMaximo = console.getValorMaximo();
         
+        List<String> messages  = engine.getMessages(tipoConexao, numeroUsuarios, tempoEstimado, servicos, valorMaximo);
         List<Plano> answer = engine.getAnswer(tipoConexao, numeroUsuarios, tempoEstimado, servicos, valorMaximo);
+        console.showMessages(messages);
         console.showAnswer(answer);
     }
 }

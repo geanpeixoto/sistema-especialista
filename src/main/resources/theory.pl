@@ -202,7 +202,7 @@ plano_franquia_norm(Operadora, Nome, Preco, Value) :-
 modulo(Value, Value) :- Value >= 0, !.
 modulo(Value, Inv) :- Inv is -Value.
 
-error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco, Value) :-
+error_check(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco) :-
     plano_download_norm(Operadora, Plano, Preco, OD),
     plano_upload_norm(Operadora, Plano, Preco, OU),
     plano_franquia_norm(Operadora, Plano, Preco, OF),
@@ -212,7 +212,9 @@ error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco, Value) 
     modulo(OD-UD, D),
     modulo(OU-UU, U),
     modulo(OF-UF, F),
-    Value is D*0.4 + U*0.2 + F*0.4.
+    D < 0.1,
+    U < 0.1,
+    F < 0.1.
 
 queue_contains([Head|_], Head) :- !.
 queue_contains([_|Tail], Head) :- queue_contains(Tail, Head).
@@ -224,8 +226,7 @@ conexao_check(Conexao, TipoConexao) :- conexao(Conexao, TipoConexao).
 
 run(Servicos, NumeroPessoas, QuantidadeHoras, PrecoMaximo, TipoConexao, Operadora, Plano, Preco) :-
     plano_(Operadora, Conexao, Plano, Preco, _, _, _),
-    error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco, Error),
+    error(Servicos, NumeroPessoas, QuantidadeHoras, Operadora, Plano, Preco),
     ping_check(Servicos, Conexao),
     conexao_check(Conexao, TipoConexao),
-    Error < 0.1,
     Preco < PrecoMaximo.

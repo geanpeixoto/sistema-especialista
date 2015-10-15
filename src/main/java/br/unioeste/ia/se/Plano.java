@@ -21,9 +21,9 @@ class Plano {
 
     @Override
     public String toString() {
-        return "Plano{" + "operadora=" + operadora + ", nome=" + nome + ", preco=" + preco + '}';
+        return "Plano{" + "operadora=" + operadora + ", nome=" + nome + ", preco=" + preco + ", franquia=" + franquia + ", download=" + download + ", upload=" + upload + '}';
     }
-    
+
     @Override
     public int hashCode() {
         int hash = 3;

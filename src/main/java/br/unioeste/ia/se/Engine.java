@@ -63,34 +63,63 @@ public class Engine extends Prolog {
         SolveInfo info = this.solve(new Struct("run", terms));
         do {
 
-            if ( info.isSuccess() ) {
-                Plano plano = new Plano();
-
-                plano.operadora = getValue(info.getVarValue("Operadora"));
-                plano.nome = getValue(info.getVarValue("Plano"));
-                plano.preco = Float.parseFloat(getValue(info.getVarValue("Preco")));
-                
-                planos.add(plano);
+            if (info.isSuccess()) {
+                planos.add(getPlano(
+                        info.getVarValue("Operadora"),
+                        info.getVarValue("Plano"),
+                        info.getVarValue("Preco")
+                ));
             }
-            
+
             try {
                 info = this.solveNext();
             } catch (NoMoreSolutionException ex) {
                 break;
             }
         } while (true);
-        
+
         Collections.sort(planos, new Comparator<Plano>() {
             @Override
             public int compare(Plano o1, Plano o2) {
                 return o1.preco.compareTo(o2.preco);
             }
         });
-        
+
         return planos;
     }
-    
+
+    private Plano getPlano(Term operadora, Term nome, Term preco) throws NoSolutionException {
+//    plano(Operadora, Conexao, Nome, Valor, Franquia, FUnidade, Download, DUnidade, Upload, UUnidade)
+        Term terms[] = {
+            operadora,
+            new Var("Conexao"),
+            nome,
+            preco,
+            new Var("Franquia"),
+            new Var("FUnidade"),
+            new Var("Download"),
+            new Var("DUnidade"),
+            new Var("Upload"),
+            new Var("UUnidade")
+        };
+
+        SolveInfo info = this.solve(new Struct("plano", terms));
+
+        Plano plano = new Plano();
+        plano.operadora = getValue(operadora);
+        plano.nome = getValue(nome);
+        plano.preco = Float.parseFloat(getValue(preco));
+
+        if (info.isSuccess()) {
+            plano.download = getValue(info.getVarValue("Download")) + getValue(info.getVarValue("DUnidade"));
+            plano.upload = getValue(info.getVarValue("Upload")) + getValue(info.getVarValue("UUnidade"));
+            plano.franquia = getValue(info.getVarValue("Franquia")) + getValue(info.getVarValue("FUnidade"));
+        }
+
+        return plano;
+    }
+
     private String getValue(Term term) {
-        return term.toString().replaceAll("\"", "").replaceAll("\'","");
+        return term.toString().replaceAll("\"", "").replaceAll("\'", "");
     }
 }
